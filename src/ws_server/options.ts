@@ -1,7 +1,7 @@
 enum DifficultyLevel {
-  школьник = 0.85,
-  матрос = 0.75,
-  капита = 0.55,
-  генерал_адмирал = 0.333333333,
+  schoolboy = 0.85,
+  sailor = 0.75,
+  captain = 0.55,
+  general_admiral = 0.29,
 }
-export const BotDifficultyLevel = DifficultyLevel.капита;
+export const BotDifficultyLevel = DifficultyLevel.sailor;

@@ -87,7 +87,7 @@ export class ClientService {
 
     if (typeof result === "string") {
       console.log(`Result: ${result}\n`);
-    } else {
+    } else if (result) {
       console.log("Result:");
       console.table(result);
       console.log("\n");

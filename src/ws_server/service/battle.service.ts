@@ -66,24 +66,35 @@ export class BattleService {
     const { gameId, x, y, indexPlayer } = data;
 
     const game = this.storage.games.get(gameId);
-    if (!game) {
-      return ``;
+    if (!game || game.users.some((u) => !u.gameIndex)) {
+      return null;
     }
     if (game.next !== indexPlayer) {
       return `Attack failed it's the player's turn ${game.next}`;
     }
-    const user = game.users.find((user) => user.index === indexPlayer);
-    const opponent = game.users.find((user) => user.index !== indexPlayer);
+    const { users } = game;
+    const user = users.find((user) => user.index === indexPlayer);
+    const opponent = users.find((user) => user.index !== indexPlayer);
+    let status = "";
     if (user.pastAttacks.has(`${x}${y}`)) {
+      user.ws.send(
+        JSON.stringify({
+          type: "turn",
+          data: JSON.stringify({
+            currentPlayer: user.index,
+          }),
+          id: 0,
+        })
+      );
       return `User: ${indexPlayer} already shat to x: ${x} y ${y}`;
     }
+
     user.pastAttacks.add(`${x}${y}`);
     const ships = opponent.ships;
     const target = ships[y][x];
-    let status = "";
     let ship: { x: number; y: number }[];
     if (target == 0) {
-      status = "miss";
+      status = "";
     }
     if (target == 1) {
       ship = this.getShip(ships, x, y);
@@ -93,13 +104,32 @@ export class BattleService {
       } else {
         status = "killed";
       }
+    } else {
+      status = "miss";
     }
+
+    users.forEach((u) => {
+      u.ws.send(
+        JSON.stringify({
+          type: "attack",
+          data: JSON.stringify({
+            position: {
+              x,
+              y,
+            },
+            currentPlayer: indexPlayer,
+            status,
+          }),
+          id: 0,
+        })
+      );
+    });
 
     if (status === "killed") {
       user.shipsKill += 1;
       const surroundingCells = this.getSurroundingCells({ ship, x, y });
       ship.forEach((cell) => {
-        [user, opponent].forEach((u) => {
+        users.forEach((u) => {
           u.ws.send(
             JSON.stringify({
               type: "attack",
@@ -116,12 +146,13 @@ export class BattleService {
           );
         });
       });
+
       surroundingCells.forEach((cell) => {
-        game.users.forEach((user) => {
-          if (user.index === indexPlayer) {
-            user.pastAttacks.add(`${cell.x}${cell.y}`);
+        users.forEach((u) => {
+          if (u.index === indexPlayer) {
+            u.pastAttacks.add(`${cell.x}${cell.y}`);
           }
-          user.ws.send(
+          u.ws.send(
             JSON.stringify({
               type: "attack",
               data: JSON.stringify({
@@ -139,15 +170,8 @@ export class BattleService {
       });
     }
 
-    if (status === "miss") {
-      game.next = opponent.index;
-      if (opponent.name == "bot" && opponent.shipsKill < 10) {
-        this.randomAttack({ gameId, indexPlayer: opponent.index });
-      }
-    }
-
-    game.users.forEach((user) => {
-      user.ws.send(
+    users.forEach((u) => {
+      u.ws.send(
         JSON.stringify({
           type: "turn",
           data: JSON.stringify({
@@ -158,26 +182,21 @@ export class BattleService {
       );
     });
 
-    game.users.forEach((u) => {
-      u.ws.send(
-        JSON.stringify({
-          type: "attack",
-          data: JSON.stringify({
-            position: {
-              x,
-              y,
-            },
-            currentPlayer: indexPlayer,
-            status,
-          }),
-          id: 0,
-        })
-      );
-    });
+    if (status === "miss") {
+      game.next = opponent.index;
+      if (opponent.name == "bot" && opponent.shipsKill < 10) {
+        this.randomAttack({ gameId, indexPlayer: opponent.index });
+      }
+      if (opponent.gameIndex) {
+        return `User: ${indexPlayer} shat to x: ${x} y ${y} - ${status}!`;
+      } else {
+        return `User: ${indexPlayer} shat to x: ${x} y ${y} - ${status}!\nBot is wine!`;
+      }
+    }
 
     if (user.shipsKill === 10) {
-      game.users.forEach((user) => {
-        user.ws.send(
+      users.forEach((u) => {
+        u.ws.send(
           JSON.stringify({
             type: "finish",
             data: JSON.stringify({
@@ -186,10 +205,10 @@ export class BattleService {
             id: 0,
           })
         );
-        user.gameIndex = undefined;
-        user.pastAttacks = new Set<string>();
-        user.shipsKill = 0;
-        user.ships = undefined;
+        u.gameIndex = undefined;
+        u.pastAttacks = new Set<string>();
+        u.shipsKill = 0;
+        u.ships = undefined;
       });
 
       if (this.storage.winners.get(indexPlayer)) {
@@ -226,12 +245,12 @@ export class BattleService {
       );
       this.storage.games.delete(gameId);
       if (user.name === "bot") {
-        console.log(`Bot is a winner!`);
+        return "";
       }
       return `${user.name} is wine!`;
+    } else if (status != "miss") {
+      return `User: ${indexPlayer} shat to x: ${x} y ${y} - ${status}!`;
     }
-
-    return `User: ${indexPlayer} shat to x: ${x} y ${y} - ${status}!`;
   }
 
   isShipAlive(ships: number[][], ship: { x: number; y: number }[]): boolean {
