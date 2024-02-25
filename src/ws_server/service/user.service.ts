@@ -31,7 +31,9 @@ export class UserService {
 
   logOut(index: number) {
     const user = this.storage.users.get(index);
-    this.storage.games.delete(user.gameIndex);
+    try {
+      this.storage.games.delete(user.gameIndex);
+    } catch (e) {}
     user.gameIndex = undefined;
     user.ships = undefined;
     user.shipsKill = 0;
