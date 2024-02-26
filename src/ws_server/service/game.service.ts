@@ -68,7 +68,7 @@ export class GameService {
           id: 0,
         })
       );
-    })
+    });
     this.updateRooms();
     return `Game ${indexRoom} started`;
   }
@@ -88,5 +88,64 @@ export class GameService {
     this.storage.games.set(gameIndex, game);
     this.start(index, gameIndex);
     return `Single play ${gameIndex} created successfully`;
+  }
+
+  endGame(indexPlayer: number) {
+    const winner = this.storage.users.get(indexPlayer);
+    const game = this.storage.games.get(winner.gameIndex);
+    const users = game.users;
+    users.forEach((u) => {
+      u.ws.send(
+        JSON.stringify({
+          type: "finish",
+          data: JSON.stringify({
+            winPlayer: indexPlayer,
+          }),
+          id: 0,
+        })
+      );
+      u.gameIndex = undefined;
+      u.pastAttacks = new Set<string>();
+      u.shipsKill = 0;
+      u.ships = undefined;
+    });
+
+    if (this.storage.winners.get(indexPlayer)) {
+      const record = this.storage.winners.get(indexPlayer);
+      record.wins += 1;
+    } else {
+      if (winner.name === "bot") {
+        const botWins = this.storage.winners.get(99999999);
+        if (botWins) {
+          botWins.wins += 1;
+          this.storage.winners.set(99999999, {
+            name: winner.name,
+            wins: botWins.wins,
+          });
+        } else {
+          this.storage.winners.set(99999999, {
+            name: winner.name,
+            wins: 1,
+          });
+        }
+      } else {
+        this.storage.winners.set(indexPlayer, { name: winner.name, wins: 1 });
+      }
+    }
+
+    this.storage.users.forEach((u) =>
+      u.ws.send(
+        JSON.stringify({
+          type: "update_winners",
+          data: JSON.stringify(Array.from(this.storage.winners.values())),
+          id: 0,
+        })
+      )
+    );
+    this.storage.games.delete(game.index);
+    if (winner.name === "bot") {
+      return "";
+    }
+    return `${winner.name} is wine!`;
   }
 }

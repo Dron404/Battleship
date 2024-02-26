@@ -14,9 +14,9 @@ export class ClientService {
   constructor(client: WebSocket, storage: DB) {
     this.storage = storage;
     this.client = client;
-    this.userService = new UserService(this.storage);
     this.gameService = new GameService(this.storage);
-    this.battleService = new BattleService(this.storage);
+    this.userService = new UserService(this.storage, this.gameService);
+    this.battleService = new BattleService(this.storage, this.gameService);
     this.clientListener();
   }
 

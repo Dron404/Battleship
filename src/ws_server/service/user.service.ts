@@ -2,11 +2,14 @@ import { WebSocket } from "ws";
 import { getIndex } from "../db/helpers";
 import { User } from "../db/models";
 import { DB } from "../db/storage";
+import { GameService } from "./game.service";
 
 export class UserService {
   private storage: DB;
-  constructor(storage: DB) {
+  gameService: GameService;
+  constructor(storage: DB, gameService: GameService) {
     this.storage = storage;
+    this.gameService = gameService;
   }
 
   logIn(data: User, ws: WebSocket) {
@@ -31,9 +34,17 @@ export class UserService {
 
   logOut(index: number) {
     const user = this.storage.users.get(index);
-    try {
-      this.storage.games.delete(user.gameIndex);
-    } catch (e) {}
+    if (user.gameIndex) {
+      const opponent = this.storage.games
+        .get(user.gameIndex)
+        .users.find((u) => u.index != index);
+      if (opponent) {
+        console.log(this.gameService.endGame(opponent.index));
+      }
+      try {
+        this.storage.games.delete(user.gameIndex);
+      } catch (e) {}
+    }
     user.gameIndex = undefined;
     user.ships = undefined;
     user.shipsKill = 0;

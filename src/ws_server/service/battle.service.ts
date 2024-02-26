@@ -2,11 +2,14 @@ import { User } from "../db/models";
 import { DB } from "../db/storage";
 import { BotDifficultyLevel } from "../options";
 import { AddShipsData, AttackData } from "../types";
+import { GameService } from "./game.service";
 
 export class BattleService {
   storage: DB;
-  constructor(storage: DB) {
+  gameService: GameService;
+  constructor(storage: DB, gameService: GameService) {
     this.storage = storage;
+    this.gameService = gameService;
   }
 
   addShips(data: AddShipsData) {
@@ -195,59 +198,7 @@ export class BattleService {
     }
 
     if (user.shipsKill === 10) {
-      users.forEach((u) => {
-        u.ws.send(
-          JSON.stringify({
-            type: "finish",
-            data: JSON.stringify({
-              winPlayer: indexPlayer,
-            }),
-            id: 0,
-          })
-        );
-        u.gameIndex = undefined;
-        u.pastAttacks = new Set<string>();
-        u.shipsKill = 0;
-        u.ships = undefined;
-      });
-
-      if (this.storage.winners.get(indexPlayer)) {
-        const record = this.storage.winners.get(indexPlayer);
-        record.wins += 1;
-      } else {
-        if (user.name === "bot") {
-          const botWins = this.storage.winners.get(99999999);
-          if (botWins) {
-            botWins.wins += 1;
-            this.storage.winners.set(99999999, {
-              name: user.name,
-              wins: botWins.wins,
-            });
-          } else {
-            this.storage.winners.set(99999999, {
-              name: user.name,
-              wins: 1,
-            });
-          }
-        } else {
-          this.storage.winners.set(indexPlayer, { name: user.name, wins: 1 });
-        }
-      }
-
-      this.storage.users.forEach((u) =>
-        u.ws.send(
-          JSON.stringify({
-            type: "update_winners",
-            data: JSON.stringify(Array.from(this.storage.winners.values())),
-            id: 0,
-          })
-        )
-      );
-      this.storage.games.delete(gameId);
-      if (user.name === "bot") {
-        return "";
-      }
-      return `${user.name} is wine!`;
+      return this.gameService.endGame(indexPlayer);
     } else if (status != "miss") {
       return `User: ${indexPlayer} shat to x: ${x} y ${y} - ${status}!`;
     }
