@@ -13,14 +13,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Dron404/CRUD-API.git"
+    "url": "git+https://github.com/Dron404/Battleship"
   },
   "author": "Andrei Mashedo",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Dron404/CRUD-API/issues"
+    "url": "https://github.com/Dron404/Battleship/issues"
   },
-  "homepage": "https://github.com/Dron404/CRUD-API#readme",
+  "homepage": "https://github.com/Dron404/Battleship#readme",
   "devDependencies": {
     "@types/jest": "^29.5.12",
     "@types/node": "^20.11.16",
