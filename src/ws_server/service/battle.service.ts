@@ -46,17 +46,20 @@ export class BattleService {
       gameUsers.forEach((gUser) => {
         gUser.ws.send(
           JSON.stringify({
-            type: "turn",
+            type: "start_game",
             data: JSON.stringify({
-              currentPlayer: user.index,
+              ships,
+              currentPlayerIndex: indexPlayer,
             }),
             id: 0,
           })
         );
         gUser.ws.send(
           JSON.stringify({
-            type: "start_game",
-            data: JSON.stringify({ ships, currentPlayerIndex: indexPlayer }),
+            type: "turn",
+            data: JSON.stringify({
+              currentPlayer: user.index,
+            }),
             id: 0,
           })
         );
